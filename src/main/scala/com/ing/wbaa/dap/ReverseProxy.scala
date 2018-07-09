@@ -15,16 +15,28 @@ object Main extends App {
 
   val serverSource = Http().bind(interface = "localhost", port = 8081)
 
-  val requestHandler: HttpRequest => Future[HttpResponse] = {
-    case htr: HttpRequest =>
-      println(s"OLD: $htr")
-      val newHtr = htr.copy(uri = htr.uri.withAuthority("localhost", 8010))
-      println(s"NEW: $newHtr")
+  val authorisation = new Authorisation
+  val authentication = new Authentication
 
-      Http().singleRequest(newHtr)
-  }
+  val requestHandler: HttpRequest => Future[HttpResponse] = htr =>
+    authentication.authenticate
+      .flatMap {
+        case false => Future(HttpResponse(StatusCodes.ProxyAuthenticationRequired))
+        case true => authorisation.authorise
+      }
+      .flatMap {
+        case false => Future(HttpResponse(StatusCodes.Unauthorized))
+        case true =>
+          println(s"OLD: $htr")
+          val newHtr = htr.copy(uri = htr.uri.withAuthority("localhost", 8010))
+          println(s"NEW: $newHtr")
 
-  val bindingFuture: Future[Http.ServerBinding] =
+          Http().singleRequest(newHtr)
+        case e: HttpResponse => Future(e)
+      }
+
+  val bindingFuture: Future[Http.ServerBinding] = {
+    println("Server has started")
     serverSource.to(Sink.foreach { connection =>
       println("Accepted new connection from " + connection.remoteAddress)
 
@@ -32,4 +44,5 @@ object Main extends App {
       // this is equivalent to
       // connection handleWith { Flow[HttpRequest] map requestHandler }
     }).run()
+  }
 }
