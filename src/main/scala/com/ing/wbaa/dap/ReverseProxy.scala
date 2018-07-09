@@ -32,7 +32,6 @@ object Main extends App {
           println(s"NEW: $newHtr")
 
           Http().singleRequest(newHtr)
-        case e: HttpResponse => Future(e)
       }
 
   val bindingFuture: Future[Http.ServerBinding] = {
