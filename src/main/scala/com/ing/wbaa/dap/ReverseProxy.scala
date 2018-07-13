@@ -8,7 +8,7 @@ import akka.stream.scaladsl.Sink
 
 import scala.concurrent.Future
 
-object Main extends App {
+object ReverseProxy extends App {
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
@@ -28,6 +28,7 @@ object Main extends App {
         case false => Future(HttpResponse(StatusCodes.Unauthorized))
         case true =>
           println(s"OLD: $htr")
+          htr.headers(0)
           val newHtr = htr.copy(uri = htr.uri.withAuthority("localhost", 8010))
           println(s"NEW: $newHtr")
 
